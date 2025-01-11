@@ -192,6 +192,16 @@ def player_move():
         "fen": board.fen()
     })
 
+@app.route('/test-stockfish', methods=['GET'])
+def test_stockfish():
+    try:
+        with chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH) as engine:
+            engine.configure({'Threads': 1})
+            result = engine.analyse(board, chess.engine.Limit(time=0.1))
+        return jsonify({'status': 'Stockfish działa poprawnie'})
+    except Exception as e:
+        app.logger.error(f"Stockfish nie działa: {e}")
+        return jsonify({'status': 'Stockfish nie działa', 'error': str(e)}), 500
 
 @app.route("/undo", methods=["POST"])
 def undo():
