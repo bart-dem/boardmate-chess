@@ -16,7 +16,7 @@ STOCKFISH_PATH = os.path.join(os.path.dirname(__file__), 'stockfish', 'stockfish
 
 # Uruchamiamy silnik przy starcie aplikacji
 try:
-    engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
+    engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH, threads=1)
     logger.info("Stockfish engine started successfully.")
 except Exception as e:
     logger.error(f"Failed to start Stockfish engine: {e}")
@@ -146,7 +146,7 @@ def player_move():
 
     # 2. Ruch komputera (Stockfish)
     try:
-        result = engine.play(board, limit=chess.engine.Limit(time=1))
+        result = engine.play(board, limit=chess.engine.Limit(time=2, depth=10))
         board.push(result.move)
         logger.info(f"Computer moved: {result.move}")
     except Exception as e:
