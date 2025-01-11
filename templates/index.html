@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chess with Python & Stockfish</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
+  <style>
+    /* Podobny design jak omawialiśmy wcześniej */
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #222;
+      height: 100vh;
+      font-family: 'Open Sans', sans-serif; /* Ustawienie czcionki Roboto */
+      font-weight: bold; /* Pogrubienie tekstu */
+    }
+    .app-container {
+      width: 375px;
+      height: 667px;
+      background: #000;
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+    }
+    .screen {
+      display: none;
+      width: 100%;
+      height: 100%;
+      padding: 20px;
+      position: relative;
+    }
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Start screen */
+    .start-btn {
+      font-size: 24px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .start-btn:hover {
+      color: #ccc;
+    }
+
+    /* Elo screen */
+    .title {
+      font-size: 20px;
+      margin-bottom: 30px;
+    }
+    .custom-select {
+      appearance: none;
+      background: transparent;
+      border: 1px solid #fff;
+      color: #fff;
+      font-size: 18px;
+      padding: 5px 10px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+    .confirm-btn {
+      font-size: 18px;
+      cursor: pointer;
+      color: #fff;
+      transition: color 0.2s;
+    }
+    .confirm-btn:hover {
+      color: #ccc;
+    }
+
+    /* Game screen */
+    .quit-btn {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: color 0.2s, background 0.2s;
+        padding: 5px 10px;
+        background: #000000;
+        border: none;
+        border-radius: 4px;
+        color: #fff;
+        z-index: 10; /* Upewnij się, że jest na wierzchu */
+
+    }
+    .quit-btn:hover {
+      color: #ccc;
+      background: #b7b7b7;
+    }
+
+    .moves-history {
+      position: relative;
+      width: 100%;
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    .previous-moves {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .move-line {
+      margin: 2px 0;
+      width: 100%;
+      text-align: center;
+    }
+
+    /* Definicje kolorów i rozmiarów czcionki */
+    .move-level-1 {
+      color: #fff;
+      font-size: 22px;
+    }
+
+    .move-level-2 {
+      color: #c0c0c0;
+      font-size: 18px;
+    }
+
+    .move-level-3 {
+      color: #858585;
+      font-size: 15px;
+    }
+
+    .move-level-4 {
+      color: #4a4a4a;
+      font-size: 13px;
+    }
+
+    .last-move {
+      position: absolute;
+      left: 0; right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      text-align: center;
+      font-size: 20px;
+      margin-top: 20px;
+      color: #fff;
+    }
+
+    .move-controls {
+      position: absolute;
+      top: 70%;
+      left: 0; right: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .move-controls .custom-select {
+      border: 1px solid #fff;
+      color: #fff;
+      font-size: 16px;
+      padding: 5px 10px;
+      background: transparent;
+    }
+    .move-controls .move-btn {
+      margin-left: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .move-controls .move-btn:hover {
+      color: #ccc;
+    }
+
+    .bottom-bar {
+      position: absolute;
+      bottom: 20px;
+      left: 20px; right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .undo-btn {
+      cursor: pointer;
+      font-size: 16px;
+      transition: color 0.2s;
+    }
+    .undo-btn:hover {
+      color: #ccc;
+    }
+    .timer {
+      font-size: 14px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Screen START -->
+    <div id="screen-start" class="screen active">
+      <div class="start-btn" onclick="goToEloScreen()">start</div>
+    </div>
+
+    <!-- Screen ELO -->
+    <div id="screen-elo" class="screen">
+      <div class="title">choose your elo</div>
+      <div>
+        <select id="eloSelect" class="custom-select">
+          <option value="1000">1000</option>
+          <option value="1100">1100</option>
+          <option value="1200" selected>1200</option>
+          <option value="1300">1300</option>
+          <option value="1400">1400</option>
+          <option value="1500">1500</option>
+          <option value="1600">1600</option>
+          <option value="1700">1700</option>
+          <option value="1800">1800</option>
+          <option value="1900">1900</option>
+          <option value="2000">2000</option>
+        </select>
+        <span class="confirm-btn" onclick="startGame()">confirm</span>
+      </div>
+    </div>
+
+    <!-- Screen GAME -->
+    <div id="screen-game" class="screen">
+        <button class="quit-btn" onclick="quitGame()">quit</button>
+
+      <div class="moves-history">
+        <div class="previous-moves" id="previousMoves"></div>
+        <div class="last-move" id="lastMove">waiting for your move</div>
+      </div>
+
+      <div class="move-controls">
+        <select id="moveSelect" class="custom-select"></select>
+        <span class="move-btn" onclick="makeMove()">make a move</span>
+      </div>
+
+      <div class="bottom-bar">
+        <div class="undo-btn" onclick="undoMove()">undo</div>
+        <div class="timer" id="timerDisplay">time 00:00</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let screenStart, screenElo, screenGame;
+    let previousMovesDiv, lastMoveDiv, moveSelect;
+    let timerInterval;
+    let secondsElapsed = 0;
+    let timerRunning = false; // Flaga do śledzenia stanu timera
+    let firstMoveMade = false; // Flaga do śledzenia pierwszego ruchu
+
+    window.onload = () => {
+      screenStart = document.getElementById("screen-start");
+      screenElo = document.getElementById("screen-elo");
+      screenGame = document.getElementById("screen-game");
+      previousMovesDiv = document.getElementById("previousMoves");
+      lastMoveDiv = document.getElementById("lastMove");
+      moveSelect = document.getElementById("moveSelect");
+
+      updateTimerDisplay();
+    };
+
+    /* PRZEJŚCIA EKRANÓW */
+    function goToEloScreen() {
+      screenStart.classList.remove("active");
+      screenElo.classList.add("active");
+    }
+
+    function startGame() {
+  const elo = document.getElementById("eloSelect").value;
+  // Możliwość ustawienia ELO w backendzie, jeśli jest to wymagane.
+
+  // Nowa gra
+  fetch("/newgame", { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+      console.log("New game started:", data);
+      // Reset UI
+      previousMovesDiv.innerHTML = "";
+      lastMoveDiv.textContent = "waiting for your move";
+      firstMoveMade = false; // Reset flagi pierwszego ruchu
+      // Przejście do ekranu gry
+      screenElo.classList.remove("active");
+      screenGame.classList.add("active");
+      // Zacznij timer, resetując go
+      startTimer(true);
+      // Pobierz listę dozwolonych ruchów
+      updateMoveList();
+    })
+    .catch(err => console.error(err));
+}
+
+
+function quitGame() {
+  console.log("quitGame() wywołane"); // Dodany log dla diagnostyki
+  // Sprawdzenie, czy timer jest aktywny przed zatrzymaniem
+  if (timerRunning) {
+    stopTimer();
+  }
+
+  // Wracamy do ekranu ELO
+  screenGame.classList.remove("active");
+  screenElo.classList.add("active");
+
+  // Resetowanie elementów interfejsu
+  lastMoveDiv.textContent = "";
+  previousMovesDiv.innerHTML = "";
+}
+
+
+
+    /* TIMER */
+    function startTimer(reset = false) {
+  if (reset) {
+    secondsElapsed = 0;
+    updateTimerDisplay();
+  }
+  
+  if (!timerRunning) {
+    timerInterval = setInterval(() => {
+      secondsElapsed++;
+      updateTimerDisplay();
+    }, 1000);
+    timerRunning = true;
+  }
+}
+
+function stopTimer() {
+  if (timerRunning) {
+    clearInterval(timerInterval);
+    timerRunning = false;
+    timerInterval = null;
+  }
+}
+
+function updateTimerDisplay() {
+  const timer = document.getElementById("timerDisplay");
+  const m = Math.floor(secondsElapsed / 60);
+  const s = secondsElapsed % 60;
+  timer.textContent = "time " + 
+    (m < 10 ? "0"+m : m) + ":" + 
+    (s < 10 ? "0"+s : s);
+}
+
+    /* MOVE LIST (dropdown) */
+    function updateMoveList() {
+      fetch("/getmoves")
+        .then(res => res.json())
+        .then(data => {
+          const moves = data.moves;
+          moveSelect.innerHTML = "";
+          if (moves.length === 0) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.textContent = "(no moves)";
+            moveSelect.appendChild(opt);
+          } else {
+            moves.forEach(move => {
+              const opt = document.createElement("option");
+              opt.value = move;
+              opt.textContent = move;
+              moveSelect.appendChild(opt);
+            });
+          }
+        })
+        .catch(err => console.error(err));
+    }
+
+    /* MAKE A MOVE */
+    function makeMove() {
+  const selectedMove = moveSelect.value;
+  if (!selectedMove || selectedMove === "(no moves)") {
+    console.log("Brak legalnych ruchów?");
+    return;
+  }
+  // Wykonaj ruch gracza
+  fetch("/move", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ move: selectedMove })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      alert("Błąd: " + data.error);
+      return;
+    }
+    if (data.status === "gameover") {
+      // Gra skończona
+      updateMoveHistory(data.moveHistory);
+      displayGameOverMessage(data.result);
+      stopTimer(); // Zatrzymaj zegar
+    } else {
+      // Gra toczy się dalej
+      updateMoveHistory(data.moveHistory);
+      updateMoveList();
+      // Ustawienie flagi pierwszego ruchu
+      if (!firstMoveMade) {
+        firstMoveMade = true;
+        hideWaitingMessage();
+      }
+    }
+  })
+  .catch(err => console.error(err));
+}
+
+
+
+    function updateMoveHistory(moveHistory) {
+  // Clear previous moves
+  previousMovesDiv.innerHTML = "";
+
+  if (!moveHistory) return;
+
+  // Split moveHistory into move pairs using regex
+  // Dopasowanie formatu: "1. e4 e5", "2. Nf3 Nc6", itp.
+  const movePairs = moveHistory.match(/(\d+\.\s*\S+\s*\S+)/g) || [];
+
+  // Ograniczenie do 10 par ruchów
+  const limitedMovePairs = movePairs.slice(-10);
+
+  // Przypisywanie odpowiednich klas CSS do par ruchów
+  // Najnowsze pary mają wyższy priorytet w stylizacji
+  limitedMovePairs.forEach((pair, index) => {
+    const divLine = document.createElement("div");
+    divLine.className = "move-line";
+
+    // Określenie poziomu ruchu
+    let moveClass = "move-level-4"; // Domyślnie ciemnoszary
+
+    if (index === limitedMovePairs.length - 1) {
+      moveClass = "move-level-1"; // Ostatnia para ruchów (najświeższa)
+    } else if (index === limitedMovePairs.length - 2) {
+      moveClass = "move-level-2"; // Przedostatnia para
+    } else if (index === limitedMovePairs.length - 3) {
+      moveClass = "move-level-3"; // Trzeciorzędna para
+    }
+
+    divLine.classList.add(moveClass);
+    divLine.textContent = pair.trim();
+    previousMovesDiv.appendChild(divLine);
+  });
+}
+
+function displayGameOverMessage(result) {
+  // result powinien zawierać informację, kto wygrał, np. "black" lub "white"
+  let message = "";
+  console.log("Result received from backend:", result); // Dodany log dla diagnostyki
+
+  if (result.toLowerCase() === "black") {
+    message = "Checkmate! Black won.";
+  } else if (result.toLowerCase() === "white") {
+    message = "Checkmate! White won.";
+  } else {
+    message = "Game over!";
+  }
+
+  lastMoveDiv.textContent = message;
+}
+
+
+function hideWaitingMessage() {
+  lastMoveDiv.textContent = "";
+}
+
+/* UNDO */
+function undoMove() {
+  fetch("/undo", { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+      // Aktualizacja historii ruchów
+      updateMoveHistory(data.moveHistory);
+      // Aktualizacja listy dostępnych ruchów
+      updateMoveList();
+      // Ponowne ustawienie napisu "waiting for your move", jeśli gra nie jest zakończona
+      if (data.status !== "gameover") {
+        lastMoveDiv.textContent = "";
+        firstMoveMade = false;
+        startTimer(); // Wznowienie timera bez resetowania
+      } else {
+        displayGameOverMessage(data.result);
+        stopTimer(); // Zatrzymaj timer, jeśli gra jest zakończona
+      }
+    })
+    .catch(err => console.error(err));
+}
+
+  </script>
+</body>
+</html>
