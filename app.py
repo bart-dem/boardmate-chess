@@ -16,7 +16,8 @@ STOCKFISH_PATH = os.path.join(os.path.dirname(__file__), 'stockfish', 'stockfish
 
 # Uruchamiamy silnik przy starcie aplikacji
 try:
-    engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH, threads=1)
+    engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
+    engine.configure({'Threads': 1})  # Ustawienie liczby wątków
     logger.info("Stockfish engine started successfully.")
 except Exception as e:
     logger.error(f"Failed to start Stockfish engine: {e}")
