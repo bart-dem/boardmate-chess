@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Ścieżka do pliku Stockfisha
-STOCKFISH_PATH = '/opt/homebrew/bin/stockfish'  # Upewnij się, że ścieżka jest poprawna
+STOCKFISH_PATH = os.path.join(os.path.dirname(__file__), 'stockfish', 'stockfish')
 
 # Uruchamiamy silnik przy starcie aplikacji
 try:
